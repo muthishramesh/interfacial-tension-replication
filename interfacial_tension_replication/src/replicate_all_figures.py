@@ -23,6 +23,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
@@ -52,39 +53,39 @@ PURE = {
 
 SYSTEMS = {
     "a": {
-        "title": "(a) Mineral oil + n-butyl acetate",
         "file": "fig3_a_mineral_nBA.csv",
-        "gamma1": 49.0, "gamma2": 10.3,
+        "amplitude": 38.6, "intercept": 10.3,
         "alpha_exp": 6.8, "alpha_calc": 6.9,
         "xlabel": "Volume Fraction of n-Butylacetate in Mineral Oil",
+        "equation": r"$\gamma=38.6\,*\exp(-\alpha\,*x^{0.7})+10.3,$",
     },
     "b": {
-        "title": "(b) Benzene + benzyl alcohol",
         "file": "fig3_b_benzene_benzyl_alcohol.csv",
-        "gamma1": 29.5, "gamma2": 3.3,
+        "amplitude": 29.5, "intercept": 3.3,
         "alpha_exp": 5.6, "alpha_calc": 5.2,
         "xlabel": "Volume Fraction of Benzyl Alcohol in Benzene",
+        "equation": r"$\gamma=29.5\,*\exp(-\alpha\,*x^{0.7})+3.3,$",
     },
     "c": {
-        "title": "(c) Mineral oil + isopropyl myristate",
         "file": "fig3_c_mineral_ipm.csv",
-        "gamma1": 24.8, "gamma2": 24.2,
+        "amplitude": 24.8, "intercept": 24.2,
         "alpha_exp": 4.0, "alpha_calc": 4.4,
         "xlabel": "Volume Fraction of Isopropylmyristate in Mineral Oil",
+        "equation": r"$\gamma=24.8\,*\exp(-\alpha\,*x^{0.7})+24.2,$",
     },
     "d": {
-        "title": "(d) Mineral oil + benzene",
         "file": "fig3_d_mineral_benzene.csv",
-        "gamma1": 17.5, "gamma2": 32.7,
+        "amplitude": 17.5, "intercept": 32.7,
         "alpha_exp": 3.3, "alpha_calc": 3.1,
         "xlabel": "Volume Fraction of Benzene in Mineral Oil",
+        "equation": r"$\gamma=17.5\,*\exp(-\alpha\,*x^{0.7})+32.7,$",
     },
     "e": {
-        "title": "(e) Isopropyl myristate + n-butyl acetate",
         "file": "fig3_e_ipm_nBA.csv",
-        "gamma1": 16.8, "gamma2": 13.0,
+        "amplitude": 16.8, "intercept": 13.0,
         "alpha_exp": 2.9, "alpha_calc": 3.0,
         "xlabel": "Volume Fraction of n-Butylacetate in Isopropylmyristate",
+        "equation": r"$\gamma=16.8\,*\exp(-\alpha\,*x^{0.7})+13.0,$",
     },
 }
 
@@ -121,40 +122,52 @@ def plot_fig2():
 # Fig. 3
 # -----------------------------
 def plot_fig3():
-    fig, axes = plt.subplots(3, 2, figsize=(10, 12))
-    axes = axes.ravel()
+    # Recreate the original five-panel page layout: two rows of paired panels
+    # and a single, centred panel below them.
+    fig = plt.figure(figsize=(7.5, 8.25))
+    grid = fig.add_gridspec(3, 4, hspace=0.38, wspace=0.85)
+    axes = [
+        fig.add_subplot(grid[0, :2]), fig.add_subplot(grid[0, 2:]),
+        fig.add_subplot(grid[1, :2]), fig.add_subplot(grid[1, 2:]),
+        fig.add_subplot(grid[2, 1:3]),
+    ]
 
     for i, (key, s) in enumerate(SYSTEMS.items()):
         ax = axes[i]
         df = pd.read_csv(DATA / s["file"])
         V = np.linspace(0, 1, 500)
 
-        y_exp = ift_model(V, s["gamma1"], s["gamma2"], s["alpha_exp"])
-        y_calc = ift_model(V, s["gamma1"], s["gamma2"], s["alpha_calc"])
+        y_exp = s["amplitude"] * np.exp(-s["alpha_exp"] * V**0.7) + s["intercept"]
+        y_calc = s["amplitude"] * np.exp(-s["alpha_calc"] * V**0.7) + s["intercept"]
 
-        ax.plot(V, y_exp, linewidth=1.4, label=rf"solid: $\alpha={s['alpha_exp']}$")
-        ax.plot(V, y_calc, "--", linewidth=1.1, label=rf"dashed: $\alpha={s['alpha_calc']}$")
+        ax.plot(V, y_exp, color="black", linewidth=0.75)
+        ax.plot(V, y_calc, color="black", linestyle="--", linewidth=0.75)
         ax.scatter(
             df["volume_fraction"], df["experimental_gamma"],
-            s=24, facecolors="black", edgecolors="black",
-            zorder=3, label="digitized experimental points"
+            s=9, facecolors="black", edgecolors="black", linewidths=0,
+            zorder=3,
         )
 
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 50)
-        ax.set_xlabel(s["xlabel"], fontsize=8)
-        ax.set_ylabel("Interfacial Tension (mN/m)")
-        ax.set_title(s["title"], loc="left", fontsize=10, fontweight="bold")
-        ax.legend(fontsize=7, frameon=False)
+        ax.set_xticks(np.arange(0, 1.01, 0.2))
+        ax.set_yticks(np.arange(0, 51, 10))
+        ax.set_xlabel(s["xlabel"], fontsize=6, fontweight="bold")
+        ax.set_ylabel("Interfacial Tension (mN/m)", fontsize=6, fontweight="bold")
+        ax.tick_params(labelsize=5, length=2)
+        ax.text(-0.12, 1.02, key, transform=ax.transAxes, fontsize=9, fontweight="bold",
+                va="top")
+        ax.text(0.28, 0.61, s["equation"], transform=ax.transAxes, fontsize=6)
+        ax.text(0.28, 0.53, rf"$\alpha={s['alpha_exp']}$", transform=ax.transAxes, fontsize=6)
+        ax.legend(
+            handles=[Line2D([0], [0], color="black", linestyle="--", linewidth=0.75)],
+            labels=[rf"$\alpha={s['alpha_calc']}$"],
+            loc="center", bbox_to_anchor=(0.53, 0.46), fontsize=6,
+            frameon=True, fancybox=False, framealpha=1, borderpad=0.15,
+            handlelength=2.5, handletextpad=0.45,
+        )
         style_axes(ax)
-
-    axes[-1].axis("off")
-    fig.suptitle(
-        "Fig. 3 replication — model curves from Eq. (5) and approximate digitization",
-        y=0.995, fontsize=12
-    )
-    fig.tight_layout()
-    fig.savefig(OUT / "fig3_replicated.png", dpi=300)
+    fig.savefig(OUT / "fig3_replicated.png", dpi=300, bbox_inches="tight")
     fig.savefig(OUT / "fig3_replicated.svg")
     plt.close(fig)
 
